@@ -1,24 +1,28 @@
-# MCP Server Smoke Tester
+# MCP Server Smoke Tester - Project Plan
 
-## Summary
-A web app to validate MCP servers against a real-world capabilities checklist, with shareable compliance reports and a badge score for open repos.
+## Project Summary
+A web app that validates any MCP server against a practical checklist (capabilities, auth, tool contracts, and latency) and outputs a shareable readiness report.
 
 ## Target User
-AI platform/dev infra teams, agent developer tool builders, protocol integrators.
+Developers working on MCP-compatible servers, API tool teams, DevOps, and platform engineers.
 
 ## Portfolio Positioning
-Highlights agent protocol depth, fast MVP execution, and developer empathy.
+Demonstrates developer tooling, protocol-level debugging, and practical DX-focused design for modern agent infra.
 
 ## MVP Scope
-- Paste an MCP URL
-o Guided auth, capability, route checks
-o Markdown report+badge
+- Input MCP server URL
+- Auth/login selection
+- Guided test checklist (capabilities, schemas, invocation)
+- Easy pass/fail markers and markdown report
 
-## Non-goals
-- Full cert suite, deep coverage of evolving agent extensions
+## Non-Goals
+- Full protocol certification
+- Automated fix/patch systems
 
 ## Technical Approach
-Next.js+TypeScript app, Node-based probe worker, output SQLite/markdown. Focus on scriptable, reliable core test APIs.
+- Next.js frontend, Node test runner coordinator (TypeScript), Zod for schemas, Tailwind UI, SQLite/optional Postgres
+- Docker compose/dev fixtures for MCP mock servers
 
 ## Execution Notes
-Start with protocol snapshot, anchor each phase to real-world usage, document breakage and fix flows in demos.
+- Ship with mocked/broken cases and replayable runs for demo/reporting
+- Focus on clear UX and report outputs (markdown, badge)

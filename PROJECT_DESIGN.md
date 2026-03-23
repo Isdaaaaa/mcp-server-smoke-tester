@@ -1,28 +1,26 @@
-# Project Design: MCP Server Smoke Tester
+# Project Design – MCP Server Smoke Tester
 
-## Personality & Brand
-Confident, diagnostic, developer-friendly, and transparent. Focused on clarity and utility for modern API+agent tool users.
+## Personality
+- Calm, confidence-inspiring, a little playful when reporting errors
+- Technical, trustworthy, DX-focused
 
-## Color Palette
-- Primary: Indigo/Blue (#3B82F6)
-- Success: Emerald/Teal
-- Warning/Error: Amber/Red
-- Neutral: Slate/Gray backgrounds
+## Colors
+- MCP blue accent
+- Soft white/gray background
+- Attention golds/yellows for warnings
+- Actionable greens/reds (report pass/fail)
 
 ## Typography
-- UI: Inter or Sans-serif
-- Code/Reports: Menlo/Monospace
+- Clean developer typeface (e.g. Inter, JetBrains Mono)
+- Emphasize report clarity and readability
 
-## Components
-- Url input
-- Auth selector
-- Run test CTA
-- Results table
-- Status badge
-- Markdown report output
+## Components & Layout
+- Input/card UI for quick setup
+- Horizontal flow: input → checklist → report
+- Inline explanations/tooltips
+- Sticky share/report actions on bottom bar
 
-## Layout
-Fixed header, main dashboard section, expandable results pane, shareable output section.
-
-## Inspiration/References
-- Shields.io, FastAPI docs, Vercel dashboard, https://capability-protocol.org/
+## Inspiration
+- Shields.io (badges)
+- GitHub Actions reports
+- Stripe onboarding dashboard

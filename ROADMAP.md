@@ -1,7 +1,7 @@
-# Roadmap
+# Roadmap - MCP Server Smoke Tester
 
-1. Bootstrap repo, planning, and initial code scaffolding
-2. Build protocol probe and capability detection
-3. Add contract and endpoint tests
-4. Reporting and badge generator
-5. Web MVP polish and demo recording
+**Phase 1:** Repo Bootstrap, Planning, and Design Freeze
+**Phase 2:** Minimum Input UI + Local Runner Scaffolding
+**Phase 3:** Full Probe Checklist + Test Runner Integration
+**Phase 4:** Shareable Report + Badge Generation + Demo
+**Phase 5:** Polish and Portfolio Content (Docs, GIFs, CI Examples)
