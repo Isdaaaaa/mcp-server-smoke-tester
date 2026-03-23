@@ -1,0 +1,9 @@
+[
+  {"id": "slice-000", "title": "Bootstrap", "status": "todo"},
+  {"id": "slice-001", "title": "Core server probing logic", "status": "todo"},
+  {"id": "slice-002", "title": "MCP route+contract checks", "status": "todo"},
+  {"id": "slice-003", "title": "Smoke test reporting (markdown+badge)", "status": "todo"},
+  {"id": "slice-004", "title": "Web dashboard MVP", "status": "todo"},
+  {"id": "slice-005", "title": "Demo: broken/working servers", "status": "todo"},
+  {"id": "slice-006", "title": "Public repo polish + docs", "status": "todo"}
+]
