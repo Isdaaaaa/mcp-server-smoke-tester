@@ -1,6 +1,11 @@
 import type { ServerInput } from '@/lib/schemas/serverInput';
 
-export type ProbeCheckId = 'url-reachable' | 'initialize-handshake' | 'tools-list' | 'tools-contracts';
+export type ProbeCheckId =
+  | 'url-reachable'
+  | 'initialize-handshake'
+  | 'tools-list'
+  | 'tools-contracts'
+  | 'tools-sample-invocations';
 
 export type ToolContractIssueCode =
   | 'tool-not-object'
@@ -20,6 +25,19 @@ export interface ToolContractFinding {
   issues: ToolContractIssue[];
 }
 
+export type ToolInvocationStatus = 'ok' | 'jsonrpc-error' | 'request-error' | 'invalid-response';
+
+export interface ToolInvocationFinding {
+  name: string;
+  pass: boolean;
+  latencyMs: number;
+  status: ToolInvocationStatus;
+  detail: string;
+  arguments: Record<string, unknown>;
+  statusCode?: number;
+  error?: string;
+}
+
 export interface ProbeCheckResult {
   id: ProbeCheckId;
   label: string;
@@ -29,6 +47,7 @@ export interface ProbeCheckResult {
   statusCode?: number;
   error?: string;
   contractFindings?: ToolContractFinding[];
+  invocationFindings?: ToolInvocationFinding[];
 }
 
 export interface SmokeProbeSummary {

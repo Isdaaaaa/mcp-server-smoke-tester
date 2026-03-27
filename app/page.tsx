@@ -267,7 +267,7 @@ export default function HomePage() {
                 <section className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
                   <p className="text-sm font-medium text-slate-700">Empty state</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Run the smoke probe to see endpoint reachability, initialize handshake, and tools/list capability.
+                    Run the smoke probe to see endpoint reachability, initialize handshake, tools/list capability, and sample tools/call checks.
                   </p>
                 </section>
               )}
@@ -358,6 +358,16 @@ export default function HomePage() {
                                 +{check.contractFindings.length - 3} more tool findings.
                               </li>
                             )}
+                          </ul>
+                        )}
+                        {check.invocationFindings && check.invocationFindings.length > 0 && (
+                          <ul className="mt-2 space-y-1 text-[11px] text-slate-700">
+                            {check.invocationFindings.map((finding, index) => (
+                              <li key={`${finding.name}-${index}`}>
+                                <span className="font-medium">{finding.name}:</span> {finding.detail}{' '}
+                                <span className="text-slate-600">(status: {finding.status}, args: {JSON.stringify(finding.arguments)})</span>
+                              </li>
+                            ))}
                           </ul>
                         )}
                         {check.error && <p className="mt-1 text-[11px] text-rose-700">Error: {check.error}</p>}
