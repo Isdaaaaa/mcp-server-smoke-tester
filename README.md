@@ -23,6 +23,67 @@ pnpm dev
 
 Then open <http://localhost:3000>.
 
+## Portfolio demo setup
+
+Use this flow to demo the project quickly for portfolio reviewers.
+
+1. Start the app with `pnpm dev` and open the home page.
+2. In **Demo scenarios**, pick one preset:
+   - **Public endpoint (no auth)**
+   - **Bearer auth endpoint**
+   - **Custom header endpoint**
+3. Replace placeholder secrets before running:
+   - `replace-with-your-token`
+   - `replace-with-your-api-key`
+4. Click **Run smoke probe**.
+5. Review pass/fail cards, then copy/download markdown report and badge output for sharing.
+
+### Sample payload guidance
+
+The smoke tester sends MCP JSON-RPC requests in this order:
+
+1. `initialize`
+2. `tools/list`
+3. Up to 2 sample `tools/call` invocations with safe best-effort arguments
+
+Representative request shapes:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "smoke-init",
+  "method": "initialize",
+  "params": {
+    "clientInfo": { "name": "mcp-server-smoke-tester", "version": "0.1.0" },
+    "protocolVersion": "2024-11-05",
+    "capabilities": {}
+  }
+}
+```
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "smoke-tools-list",
+  "method": "tools/list",
+  "params": {}
+}
+```
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "smoke-tools-call-1",
+  "method": "tools/call",
+  "params": {
+    "name": "<tool-name>",
+    "arguments": {}
+  }
+}
+```
+
+> Note: Secret values in presets are placeholders for demo UX only. Always use real credentials from your own environment.
+
 ## Current slice behavior (smoke probe)
 
 The setup form is client-wired with Zod validation and an executable smoke probe:
