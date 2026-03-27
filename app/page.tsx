@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { runSmokeProbe } from '@/lib/probe/smokeProbe';
 import type { SmokeProbeResult } from '@/lib/probe/types';
+import { buildMarkdownReport } from '@/lib/report/markdown';
 import { defaultServerInput, serverInputSchema, type ServerInput } from '@/lib/schemas/serverInput';
 
 const checklistItems = [
@@ -23,6 +24,7 @@ export default function HomePage() {
   const [isRunning, setIsRunning] = useState(false);
   const [probeResult, setProbeResult] = useState<SmokeProbeResult | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
+  const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle');
 
   const validation = useMemo(() => serverInputSchema.safeParse(form), [form]);
 
@@ -73,6 +75,14 @@ export default function HomePage() {
   const passCount = readinessItems.filter((item) => item.pass).length;
   const isReady = validation.success;
 
+  const markdownReport = useMemo(() => {
+    if (!probeResult || !validation.success) {
+      return '';
+    }
+
+    return buildMarkdownReport(validation.data, probeResult);
+  }, [probeResult, validation]);
+
   async function handleRunProbe() {
     if (!validation.success || isRunning) {
       return;
@@ -80,6 +90,7 @@ export default function HomePage() {
 
     setIsRunning(true);
     setRunError(null);
+    setCopyState('idle');
 
     try {
       const result = await runSmokeProbe(validation.data);
@@ -90,6 +101,36 @@ export default function HomePage() {
     } finally {
       setIsRunning(false);
     }
+  }
+
+  async function handleCopyMarkdown() {
+    if (!markdownReport) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(markdownReport);
+      setCopyState('done');
+    } catch {
+      setCopyState('error');
+    }
+  }
+
+  function handleDownloadMarkdown() {
+    if (!markdownReport) {
+      return;
+    }
+
+    const blob = new Blob([markdownReport], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    anchor.href = url;
+    anchor.download = `mcp-smoke-report-${timestamp}.md`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -310,6 +351,37 @@ export default function HomePage() {
                       Endpoint: {probeResult.endpoint}
                     </p>
                   </section>
+
+                  <section className="rounded-xl border border-mcp-blueSoft bg-blue-50/80 p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCopyMarkdown}
+                        className="rounded-lg bg-mcp-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"
+                      >
+                        Copy markdown
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDownloadMarkdown}
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 transition hover:bg-blue-50"
+                      >
+                        Download .md
+                      </button>
+                      {copyState === 'done' && <span className="text-xs text-emerald-700">Copied to clipboard.</span>}
+                      {copyState === 'error' && <span className="text-xs text-rose-700">Clipboard unavailable. Use download.</span>}
+                    </div>
+                    <p className="mt-2 text-[11px] text-blue-900">Gist-ready report with checks, findings, and redacted auth info.</p>
+                  </section>
+
+                  <details className="rounded-xl border border-slate-200 bg-white p-3">
+                    <summary className="cursor-pointer text-xs font-semibold text-slate-700">
+                      Preview markdown report
+                    </summary>
+                    <pre className="mt-3 max-h-56 overflow-auto rounded-lg border border-slate-200 bg-slate-950 p-3 text-[11px] text-slate-100">
+                      {markdownReport}
+                    </pre>
+                  </details>
 
                   <ul className="space-y-2" aria-label="Probe result checks">
                     {probeResult.checks.map((check) => (

@@ -33,6 +33,9 @@ The setup form is client-wired with Zod validation and an executable smoke probe
 - Dedicated `tools/list` contract validation check for tool metadata shape (`name`, optional `description`, `inputSchema`)
 - Sample invocation runner that picks up to 2 tools and sends safe arguments derived from obvious required defaults/enums (falls back to `{}`)
 - Structured report cards showing pass/fail, latency, HTTP status, contract findings, invocation findings, and fallback notes
+- Markdown report builder (gist-ready) with one-click copy + downloadable `.md` export (auth values redacted)
+- Gist-ready markdown report generation from probe results + selected auth mode (with secret values redacted), including summary score, per-check details, contract/invocation findings, and notes
+- Report actions after each run: copy markdown to clipboard or download a `.md` file
 
 Auth behavior for probe requests:
 - `none`: no auth header sent
