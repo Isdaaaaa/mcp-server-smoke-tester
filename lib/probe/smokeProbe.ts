@@ -1,5 +1,11 @@
 import type { ServerInput } from '@/lib/schemas/serverInput';
-import type { ProbeCheckResult, SmokeProbeResult, ToolContractFinding, ToolContractIssue } from '@/lib/probe/types';
+import type {
+  ProbeCheckResult,
+  SmokeProbeResult,
+  ToolContractFinding,
+  ToolContractIssue,
+  ToolInvocationFinding,
+} from '@/lib/probe/types';
 
 type JsonRpcRequest = {
   jsonrpc: '2.0';
@@ -369,6 +375,237 @@ function buildToolsListCheck(result: RequestCheckResult): ProbeCheckResult {
   return base;
 }
 
+function firstScalarFromArray(values: unknown[] | undefined): string | number | boolean | null | undefined {
+  if (!values) {
+    return undefined;
+  }
+
+  for (const value of values) {
+    if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function deriveRequiredArguments(inputSchema: unknown): Record<string, unknown> {
+  if (!isJsonSchemaObject(inputSchema)) {
+    return {};
+  }
+
+  const required = Array.isArray(inputSchema.required)
+    ? inputSchema.required.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+    : [];
+
+  if (required.length === 0) {
+    return {};
+  }
+
+  const properties = isJsonSchemaObject(inputSchema.properties)
+    ? (inputSchema.properties as Record<string, unknown>)
+    : null;
+
+  if (!properties) {
+    return {};
+  }
+
+  const derived: Record<string, unknown> = {};
+
+  for (const requiredName of required) {
+    const propertySchema = properties[requiredName];
+    if (!isJsonSchemaObject(propertySchema)) {
+      return {};
+    }
+
+    const defaultValue = propertySchema.default;
+    if (
+      defaultValue === null ||
+      typeof defaultValue === 'string' ||
+      typeof defaultValue === 'number' ||
+      typeof defaultValue === 'boolean'
+    ) {
+      derived[requiredName] = defaultValue;
+      continue;
+    }
+
+    if ('const' in propertySchema) {
+      const constValue = propertySchema.const;
+      if (constValue === null || typeof constValue === 'string' || typeof constValue === 'number' || typeof constValue === 'boolean') {
+        derived[requiredName] = constValue;
+        continue;
+      }
+    }
+
+    const enumValue = firstScalarFromArray(Array.isArray(propertySchema.enum) ? propertySchema.enum : undefined);
+    if (enumValue !== undefined) {
+      derived[requiredName] = enumValue;
+      continue;
+    }
+
+    return {};
+  }
+
+  return derived;
+}
+
+type InvocableTool = {
+  name: string;
+  inputSchema: Record<string, unknown>;
+};
+
+function pickInvocationCandidates(tools: unknown[]): InvocableTool[] {
+  const candidates: InvocableTool[] = [];
+
+  for (const tool of tools) {
+    if (candidates.length >= 2) {
+      break;
+    }
+
+    if (!tool || typeof tool !== 'object' || Array.isArray(tool)) {
+      continue;
+    }
+
+    const record = tool as Record<string, unknown>;
+    const name = typeof record.name === 'string' ? record.name.trim() : '';
+    if (!name || !isJsonSchemaObject(record.inputSchema)) {
+      continue;
+    }
+
+    candidates.push({
+      name,
+      inputSchema: record.inputSchema,
+    });
+  }
+
+  return candidates;
+}
+
+async function runToolSampleInvocations(
+  url: string,
+  headers: HeadersInit,
+  toolsListResult: RequestCheckResult,
+): Promise<ProbeCheckResult> {
+  const base: ProbeCheckResult = {
+    id: 'tools-sample-invocations',
+    label: 'tools/call sample invocations',
+    pass: false,
+    latencyMs: null,
+    detail: 'No sample tool invocations were attempted.',
+  };
+
+  const tools = extractToolsArray(toolsListResult.data);
+  if (!tools || tools.length === 0) {
+    return {
+      ...base,
+      detail: 'Skipped sample invocations because tools/list did not return usable tools.',
+      error: toolsListResult.error,
+    };
+  }
+
+  const candidates = pickInvocationCandidates(tools);
+  if (candidates.length === 0) {
+    return {
+      ...base,
+      detail: 'No valid invocation candidates found (tools require at least name + inputSchema object).',
+    };
+  }
+
+  const findings: ToolInvocationFinding[] = [];
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    const args = deriveRequiredArguments(candidate.inputSchema);
+
+    const result = await requestJsonRpc(url, headers, {
+      jsonrpc: '2.0',
+      id: `smoke-tools-call-${index}`,
+      method: 'tools/call',
+      params: {
+        name: candidate.name,
+        arguments: args,
+      },
+    });
+
+    if (result.error) {
+      findings.push({
+        name: candidate.name,
+        pass: false,
+        latencyMs: result.latencyMs,
+        statusCode: result.statusCode,
+        status: 'request-error',
+        detail: 'Request failed before JSON-RPC result/error could be parsed.',
+        error: result.error,
+        arguments: args,
+      });
+      continue;
+    }
+
+    if (!result.data) {
+      findings.push({
+        name: candidate.name,
+        pass: false,
+        latencyMs: result.latencyMs,
+        statusCode: result.statusCode,
+        status: 'invalid-response',
+        detail: 'Server responded without a JSON-RPC result/error payload.',
+        arguments: args,
+      });
+      continue;
+    }
+
+    if (typeof result.data.error === 'object' && result.data.error !== null) {
+      const code = 'code' in result.data.error ? String(result.data.error.code) : 'unknown';
+      const message = 'message' in result.data.error ? String(result.data.error.message) : 'No error message provided.';
+      findings.push({
+        name: candidate.name,
+        pass: false,
+        latencyMs: result.latencyMs,
+        statusCode: result.statusCode,
+        status: 'jsonrpc-error',
+        detail: `JSON-RPC error ${code}: ${message}`,
+        error: message,
+        arguments: args,
+      });
+      continue;
+    }
+
+    if ('result' in result.data) {
+      findings.push({
+        name: candidate.name,
+        pass: true,
+        latencyMs: result.latencyMs,
+        statusCode: result.statusCode,
+        status: 'ok',
+        detail: 'tools/call returned a JSON-RPC result payload.',
+        arguments: args,
+      });
+      continue;
+    }
+
+    findings.push({
+      name: candidate.name,
+      pass: false,
+      latencyMs: result.latencyMs,
+      statusCode: result.statusCode,
+      status: 'invalid-response',
+      detail: 'Server replied, but payload was not a recognizable JSON-RPC result/error.',
+      arguments: args,
+    });
+  }
+
+  const latencyMs = findings.length > 0 ? findings.reduce((sum, item) => sum + item.latencyMs, 0) : null;
+  const passCount = findings.filter((finding) => finding.pass).length;
+
+  return {
+    ...base,
+    pass: passCount === findings.length,
+    latencyMs,
+    detail: `Sampled ${findings.length} tool invocation${findings.length === 1 ? '' : 's'} (${passCount} passed, ${findings.length - passCount} failed).`,
+    invocationFindings: findings,
+  };
+}
+
 export async function runSmokeProbe(server: ServerInput): Promise<SmokeProbeResult> {
   const headers = buildAuthHeaders(server);
   const startedAt = new Date().toISOString();
@@ -404,6 +641,9 @@ export async function runSmokeProbe(server: ServerInput): Promise<SmokeProbeResu
   const contractsCheck = buildToolContractCheck(toolsListResponse);
   checks.push(contractsCheck);
 
+  const invocationsCheck = await runToolSampleInvocations(server.serverUrl, headers, toolsListResponse);
+  checks.push(invocationsCheck);
+
   const passCount = checks.filter((check) => check.pass).length;
   const notes: string[] = [];
 
@@ -421,6 +661,17 @@ export async function runSmokeProbe(server: ServerInput): Promise<SmokeProbeResu
     if (sampleIssue) {
       notes.push(`Contract warning: ${sampleIssue.message}`);
     }
+  }
+
+  if (invocationsCheck.invocationFindings && invocationsCheck.invocationFindings.length > 0) {
+    const failedInvocation = invocationsCheck.invocationFindings.find((item) => !item.pass);
+    if (failedInvocation) {
+      notes.push(
+        `Invocation note: Tool "${failedInvocation.name}" failed (${failedInvocation.status}). Verify required arguments/auth expectations, then rerun with concrete payloads from server docs.`,
+      );
+    }
+  } else if (!invocationsCheck.pass) {
+    notes.push('Invocation note: No valid tools were available for sample tools/call checks.');
   }
 
   return {

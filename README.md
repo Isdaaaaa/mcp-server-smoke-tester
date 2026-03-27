@@ -29,9 +29,10 @@ The setup form is client-wired with Zod validation and an executable smoke probe
 - Server URL validation with inline errors
 - Auth mode selector (`none`, `bearer`, `custom-header`)
 - Conditional credential inputs based on selected mode
-- Run button that performs best-effort MCP JSON-RPC checks (`initialize`, `tools/list`)
+- Run button that performs best-effort MCP JSON-RPC checks (`initialize`, `tools/list`, `tools/call` sample invocations)
 - Dedicated `tools/list` contract validation check for tool metadata shape (`name`, optional `description`, `inputSchema`)
-- Structured report cards showing pass/fail, latency, HTTP status, contract findings, and fallback notes
+- Sample invocation runner that picks up to 2 tools and sends safe arguments derived from obvious required defaults/enums (falls back to `{}`)
+- Structured report cards showing pass/fail, latency, HTTP status, contract findings, invocation findings, and fallback notes
 
 Auth behavior for probe requests:
 - `none`: no auth header sent
