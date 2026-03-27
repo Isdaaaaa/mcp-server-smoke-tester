@@ -1,50 +1,36 @@
 # MCP Server Smoke Tester
 
-A bootstrap Next.js app for an in-development MCP server smoke testing dashboard.
+Bootstrap Next.js app (App Router + TypeScript + Tailwind + ESLint) for building a streamlined MCP server smoke testing UI.
 
-## Stack
+## Requirements
 
-- Next.js (App Router)
-- TypeScript
-- Tailwind CSS
-- Zod
-- ESLint
+- Node.js 18.18+ (Node 20+ recommended)
+- pnpm 9+
 
-## Getting Started
-
-### 1) Install dependencies
+## Install
 
 ```bash
 pnpm install
 ```
 
-### 2) Run in development
+## Run in development
 
 ```bash
 pnpm dev
 ```
 
-Then open http://localhost:3000.
+Then open <http://localhost:3000>.
 
-### 3) Lint and typecheck
+## Quality checks
 
 ```bash
 pnpm lint
 pnpm typecheck
 ```
 
-### 4) Build and run production
+## Production build
 
 ```bash
 pnpm build
 pnpm start
 ```
-
-## Project Structure
-
-- `app/` - UI shell and global styles
-- `lib/schemas.ts` - shared Zod schema/type for smoke test input
-
-## Current Status
-
-Bootstrap scaffold is complete. Functional smoke-test flows are intentionally pending.
