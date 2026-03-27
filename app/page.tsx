@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { runSmokeProbe } from '@/lib/probe/smokeProbe';
 import type { SmokeProbeResult } from '@/lib/probe/types';
@@ -19,6 +20,52 @@ const authModeLabel: Record<ServerInput['authMode'], string> = {
   bearer: 'Bearer token',
   'custom-header': 'Custom header',
 };
+
+type DemoPreset = {
+  id: 'public-no-auth' | 'bearer-auth' | 'custom-header';
+  title: string;
+  subtitle: string;
+  values: ServerInput;
+};
+
+const demoPresets: DemoPreset[] = [
+  {
+    id: 'public-no-auth',
+    title: 'Public endpoint (no auth)',
+    subtitle: 'Quickest path for public MCP servers and local demos.',
+    values: {
+      serverUrl: 'https://demo-public-mcp.example.com',
+      authMode: 'none',
+      bearerToken: '',
+      customHeaderName: '',
+      customHeaderValue: '',
+    },
+  },
+  {
+    id: 'bearer-auth',
+    title: 'Bearer auth endpoint',
+    subtitle: 'Prefills Authorization: Bearer token flow.',
+    values: {
+      serverUrl: 'https://demo-secure-mcp.example.com',
+      authMode: 'bearer',
+      bearerToken: 'replace-with-your-token',
+      customHeaderName: '',
+      customHeaderValue: '',
+    },
+  },
+  {
+    id: 'custom-header',
+    title: 'Custom header endpoint',
+    subtitle: 'For gateways that require custom API key headers.',
+    values: {
+      serverUrl: 'https://demo-gateway-mcp.example.com',
+      authMode: 'custom-header',
+      bearerToken: '',
+      customHeaderName: 'X-API-Key',
+      customHeaderValue: 'replace-with-your-api-key',
+    },
+  },
+];
 
 export default function HomePage() {
   const [form, setForm] = useState<ServerInput>(defaultServerInput);
@@ -165,6 +212,15 @@ export default function HomePage() {
     URL.revokeObjectURL(url);
   }
 
+  function handleApplyPreset(preset: DemoPreset) {
+    setForm({ ...preset.values });
+    setRunError(null);
+    setProbeResult(null);
+    setRunInput(null);
+    setCopyState('idle');
+    setBadgeCopyState('idle');
+  }
+
   return (
     <main className="min-h-screen bg-surface-bg px-4 py-8 text-slate-900 sm:px-6 sm:py-10 lg:px-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 lg:gap-8">
@@ -178,6 +234,49 @@ export default function HomePage() {
             Configure endpoint auth with confidence, then run a resilient smoke probe for MCP basics.
           </p>
         </header>
+
+        <section className="rounded-2xl border border-mcp-blueSoft bg-gradient-to-br from-blue-50 via-white to-blue-50/40 p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Demo scenarios</h2>
+              <p className="mt-1 max-w-3xl text-sm text-slate-600">
+                Portfolio quickstart presets for trying the smoke probe without guessing setup values.
+              </p>
+            </div>
+            <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
+              Replace placeholder secrets
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {demoPresets.map((preset) => (
+              <article key={preset.id} className="rounded-xl border border-surface-border bg-white p-4 shadow-sm">
+                <p className="text-sm font-semibold text-slate-900">{preset.title}</p>
+                <p className="mt-1 text-xs text-slate-600">{preset.subtitle}</p>
+                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] text-slate-700">
+                  <p>
+                    URL: <span className="font-mono">{preset.values.serverUrl}</span>
+                  </p>
+                  <p>
+                    Auth: <span className="font-medium">{authModeLabel[preset.values.authMode]}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset(preset)}
+                  className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-mcp-blueSoft bg-white px-3 py-2 text-xs font-semibold text-mcp-blue transition hover:bg-blue-50"
+                >
+                  Use preset
+                </button>
+              </article>
+            ))}
+          </div>
+
+          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            Secrets shown in presets are placeholders for demo clarity only. Replace tokens/keys with your own values before
+            running against real endpoints.
+          </p>
+        </section>
 
         <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr_1fr] lg:items-start">
           <article className="rounded-2xl border border-surface-border bg-surface-card p-5 shadow-sm sm:p-6">
@@ -389,7 +488,14 @@ export default function HomePage() {
                       <p className="text-xs font-semibold text-slate-700">Badge output</p>
                       <p className="mt-1 text-[11px] text-slate-600">Share this run as a status badge in README, docs, or dashboards.</p>
                       <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
-                        <img src={badge.badgeUrl} alt={badge.altText} className="h-5" />
+                        <Image
+                          src={badge.badgeUrl}
+                          alt={badge.altText}
+                          width={156}
+                          height={20}
+                          unoptimized
+                          className="h-5 w-auto"
+                        />
                         <span className="text-[11px] font-mono text-slate-700">{badge.message}</span>
                       </div>
                     </section>
