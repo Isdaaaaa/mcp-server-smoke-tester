@@ -340,6 +340,26 @@ export default function HomePage() {
                             Latency: <span className="font-mono">{check.latencyMs ?? 'n/a'}ms</span>
                           </span>
                         </div>
+                        {check.contractFindings && check.contractFindings.length > 0 && (
+                          <ul className="mt-2 space-y-1 text-[11px] text-slate-700">
+                            {check.contractFindings.slice(0, 3).map((finding) => {
+                              const title = finding.name
+                                ? `${finding.name} (index ${finding.index})`
+                                : `Tool index ${finding.index}`;
+                              return (
+                                <li key={`${finding.index}-${finding.name ?? 'unnamed'}`}>
+                                  <span className="font-medium">{title}:</span>{' '}
+                                  {finding.issues.map((item) => item.message).join(' ')}
+                                </li>
+                              );
+                            })}
+                            {check.contractFindings.length > 3 && (
+                              <li className="text-slate-600">
+                                +{check.contractFindings.length - 3} more tool findings.
+                              </li>
+                            )}
+                          </ul>
+                        )}
                         {check.error && <p className="mt-1 text-[11px] text-rose-700">Error: {check.error}</p>}
                       </li>
                     ))}

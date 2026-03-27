@@ -1,6 +1,24 @@
 import type { ServerInput } from '@/lib/schemas/serverInput';
 
-export type ProbeCheckId = 'url-reachable' | 'initialize-handshake' | 'tools-list';
+export type ProbeCheckId = 'url-reachable' | 'initialize-handshake' | 'tools-list' | 'tools-contracts';
+
+export type ToolContractIssueCode =
+  | 'tool-not-object'
+  | 'name-missing-or-empty'
+  | 'description-not-string'
+  | 'input-schema-missing-or-invalid'
+  | 'input-schema-type-not-object';
+
+export interface ToolContractIssue {
+  code: ToolContractIssueCode;
+  message: string;
+}
+
+export interface ToolContractFinding {
+  index: number;
+  name: string | null;
+  issues: ToolContractIssue[];
+}
 
 export interface ProbeCheckResult {
   id: ProbeCheckId;
@@ -10,6 +28,7 @@ export interface ProbeCheckResult {
   detail: string;
   statusCode?: number;
   error?: string;
+  contractFindings?: ToolContractFinding[];
 }
 
 export interface SmokeProbeSummary {

@@ -1,5 +1,5 @@
 import type { ServerInput } from '@/lib/schemas/serverInput';
-import type { ProbeCheckResult, SmokeProbeResult } from '@/lib/probe/types';
+import type { ProbeCheckResult, SmokeProbeResult, ToolContractFinding, ToolContractIssue } from '@/lib/probe/types';
 
 type JsonRpcRequest = {
   jsonrpc: '2.0';
@@ -56,6 +56,126 @@ function ensureResponseShape(value: unknown): JsonRpcResponse {
   }
 
   return value as JsonRpcResponse;
+}
+
+function extractToolsArray(data?: JsonRpcResponse): unknown[] | null {
+  if (!data || typeof data !== 'object' || typeof data.error === 'object') {
+    return null;
+  }
+
+  const resultPayload = data.result;
+  if (!resultPayload || typeof resultPayload !== 'object' || !("tools" in resultPayload)) {
+    return null;
+  }
+
+  const tools = (resultPayload as { tools?: unknown }).tools;
+  return Array.isArray(tools) ? tools : null;
+}
+
+function isJsonSchemaObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validateToolContract(tool: unknown, index: number): ToolContractFinding {
+  const issues: ToolContractIssue[] = [];
+
+  if (!tool || typeof tool !== 'object' || Array.isArray(tool)) {
+    issues.push({
+      code: 'tool-not-object',
+      message: `Tool at index ${index} must be an object.`,
+    });
+
+    return {
+      index,
+      name: null,
+      issues,
+    };
+  }
+
+  const record = tool as Record<string, unknown>;
+  const rawName = record.name;
+  const toolName = typeof rawName === 'string' && rawName.trim().length > 0 ? rawName.trim() : null;
+
+  if (!toolName) {
+    issues.push({
+      code: 'name-missing-or-empty',
+      message: `Tool at index ${index} is missing a non-empty string name.`,
+    });
+  }
+
+  if ('description' in record && typeof record.description !== 'string') {
+    issues.push({
+      code: 'description-not-string',
+      message: `Tool ${toolName ? `"${toolName}"` : `at index ${index}`} has a non-string description.`,
+    });
+  }
+
+  if (!('inputSchema' in record) || !isJsonSchemaObject(record.inputSchema)) {
+    issues.push({
+      code: 'input-schema-missing-or-invalid',
+      message: `Tool ${toolName ? `"${toolName}"` : `at index ${index}`} must include inputSchema as a JSON object.`,
+    });
+  } else {
+    const typeValue = record.inputSchema.type;
+    if (typeof typeValue === 'string' && typeValue !== 'object') {
+      issues.push({
+        code: 'input-schema-type-not-object',
+        message: `Tool ${toolName ? `"${toolName}"` : `at index ${index}`} has inputSchema.type="${typeValue}"; expected "object" for tool input payloads.`,
+      });
+    }
+  }
+
+  return {
+    index,
+    name: toolName,
+    issues,
+  };
+}
+
+function buildToolContractCheck(result: RequestCheckResult): ProbeCheckResult {
+  const base: ProbeCheckResult = {
+    id: 'tools-contracts',
+    label: 'tool schema contracts',
+    pass: false,
+    latencyMs: result.latencyMs,
+    statusCode: result.statusCode,
+    detail: 'Unable to validate tool contracts.',
+  };
+
+  if (result.error) {
+    return {
+      ...base,
+      detail: 'tools/list request failed before contract validation could run.',
+      error: result.error,
+    };
+  }
+
+  const tools = extractToolsArray(result.data);
+  if (!tools) {
+    return {
+      ...base,
+      detail: 'tools/list did not include a tools[] array, so contract checks were skipped.',
+    };
+  }
+
+  const findings = tools.map((tool, index) => validateToolContract(tool, index));
+  const findingsWithIssues = findings.filter((finding) => finding.issues.length > 0);
+
+  if (findingsWithIssues.length === 0) {
+    return {
+      ...base,
+      pass: true,
+      detail: `Validated ${tools.length} tool contract${tools.length === 1 ? '' : 's'} with no schema issues.`,
+      contractFindings: findings,
+    };
+  }
+
+  return {
+    ...base,
+    pass: false,
+    detail: `${findingsWithIssues.length}/${tools.length} tool contract${tools.length === 1 ? '' : 's'} have schema or metadata issues.`,
+    contractFindings: findingsWithIssues,
+  };
 }
 
 async function requestJsonRpc(
@@ -228,14 +348,7 @@ function buildToolsListCheck(result: RequestCheckResult): ProbeCheckResult {
     };
   }
 
-  const resultPayload = data.result;
-  const tools =
-    resultPayload &&
-    typeof resultPayload === 'object' &&
-    'tools' in resultPayload &&
-    Array.isArray((resultPayload as { tools?: unknown }).tools)
-      ? ((resultPayload as { tools: unknown[] }).tools ?? [])
-      : null;
+  const tools = extractToolsArray(data);
 
   if (tools) {
     return {
@@ -288,6 +401,9 @@ export async function runSmokeProbe(server: ServerInput): Promise<SmokeProbeResu
   const toolsCheck = buildToolsListCheck(toolsListResponse);
   checks.push(toolsCheck);
 
+  const contractsCheck = buildToolContractCheck(toolsListResponse);
+  checks.push(contractsCheck);
+
   const passCount = checks.filter((check) => check.pass).length;
   const notes: string[] = [];
 
@@ -297,6 +413,14 @@ export async function runSmokeProbe(server: ServerInput): Promise<SmokeProbeResu
 
   if (reachability.pass && !toolsCheck.pass) {
     notes.push('Endpoint is reachable, but MCP method support appears partial or protected.');
+  }
+
+  if (!contractsCheck.pass && contractsCheck.contractFindings && contractsCheck.contractFindings.length > 0) {
+    const sampleFinding = contractsCheck.contractFindings[0];
+    const sampleIssue = sampleFinding.issues[0];
+    if (sampleIssue) {
+      notes.push(`Contract warning: ${sampleIssue.message}`);
+    }
   }
 
   return {
