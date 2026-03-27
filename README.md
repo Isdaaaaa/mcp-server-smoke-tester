@@ -33,14 +33,26 @@ The setup form is client-wired with Zod validation and an executable smoke probe
 - Dedicated `tools/list` contract validation check for tool metadata shape (`name`, optional `description`, `inputSchema`)
 - Sample invocation runner that picks up to 2 tools and sends safe arguments derived from obvious required defaults/enums (falls back to `{}`)
 - Structured report cards showing pass/fail, latency, HTTP status, contract findings, invocation findings, and fallback notes
-- Markdown report builder (gist-ready) with one-click copy + downloadable `.md` export (auth values redacted)
-- Gist-ready markdown report generation from probe results + selected auth mode (with secret values redacted), including summary score, per-check details, contract/invocation findings, and notes
-- Report actions after each run: copy markdown to clipboard or download a `.md` file
+- Gist-ready markdown report generation from probe results + selected auth mode (auth values redacted), including summary score, per-check details, contract/invocation findings, and notes
+- Report actions after each run: copy markdown report to clipboard or download a `.md` file
+- Badge output + sharing actions: copy badge markdown, direct badge URL, or HTML `<img>` snippet
 
 Auth behavior for probe requests:
 - `none`: no auth header sent
 - `bearer`: `Authorization: Bearer <token>`
 - `custom-header`: `<name>: <value>`
+
+## Badge output and sharing
+
+After a probe run, the report area includes a badge preview and copy actions:
+- **Copy badge markdown** → `![MCP smoke status: X/Y pass](https://img.shields.io/...)`
+- **Copy badge URL** → direct `img.shields.io` link for dashboards
+- **Copy badge HTML** → `<img src="..." alt="MCP smoke status: X/Y pass" />`
+
+Badge color mapping:
+- All checks pass: `brightgreen`
+- Partial pass: `yellow`
+- No checks pass: `red`
 
 ## Quality checks
 
