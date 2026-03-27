@@ -2,7 +2,7 @@
 
 Bootstrap Next.js app (App Router + TypeScript + Tailwind + ESLint) for building a streamlined MCP server smoke testing UI.
 
-Current UI wiring includes local form state + Zod validation for auth modes (`none`, `bearer`, `custom-header`) with readiness feedback. Network execution is intentionally deferred to later slices.
+Current UI wiring includes local form state + Zod validation for auth modes (`none`, `bearer`, `custom-header`) with readiness feedback and a runnable smoke probe report.
 
 ## Requirements
 
@@ -23,15 +23,19 @@ pnpm dev
 
 Then open <http://localhost:3000>.
 
-## Current slice behavior (auth wiring)
+## Current slice behavior (smoke probe)
 
-The setup form is now fully client-wired with Zod validation:
+The setup form is client-wired with Zod validation and an executable smoke probe:
 - Server URL validation with inline errors
 - Auth mode selector (`none`, `bearer`, `custom-header`)
 - Conditional credential inputs based on selected mode
-- Readiness card that reflects whether URL + auth configuration are valid
+- Run button that performs best-effort MCP JSON-RPC checks (`initialize`, `tools/list`)
+- Structured report cards showing pass/fail, latency, HTTP status, and fallback notes
 
-No network requests are sent yet; the Run button currently validates state only.
+Auth behavior for probe requests:
+- `none`: no auth header sent
+- `bearer`: `Authorization: Bearer <token>`
+- `custom-header`: `<name>: <value>`
 
 ## Quality checks
 
