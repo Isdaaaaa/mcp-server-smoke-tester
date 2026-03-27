@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { runSmokeProbe } from '@/lib/probe/smokeProbe';
 import type { SmokeProbeResult } from '@/lib/probe/types';
+import { buildSmokeBadge } from '@/lib/report/badge';
 import { buildMarkdownReport } from '@/lib/report/markdown';
 import { defaultServerInput, serverInputSchema, type ServerInput } from '@/lib/schemas/serverInput';
 
@@ -23,8 +24,10 @@ export default function HomePage() {
   const [form, setForm] = useState<ServerInput>(defaultServerInput);
   const [isRunning, setIsRunning] = useState(false);
   const [probeResult, setProbeResult] = useState<SmokeProbeResult | null>(null);
+  const [runInput, setRunInput] = useState<ServerInput | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle');
+  const [badgeCopyState, setBadgeCopyState] = useState<'idle' | 'done' | 'error'>('idle');
 
   const validation = useMemo(() => serverInputSchema.safeParse(form), [form]);
 
@@ -76,12 +79,20 @@ export default function HomePage() {
   const isReady = validation.success;
 
   const markdownReport = useMemo(() => {
-    if (!probeResult || !validation.success) {
+    if (!probeResult || !runInput) {
       return '';
     }
 
-    return buildMarkdownReport(validation.data, probeResult);
-  }, [probeResult, validation]);
+    return buildMarkdownReport(runInput, probeResult);
+  }, [probeResult, runInput]);
+
+  const badge = useMemo(() => {
+    if (!probeResult) {
+      return null;
+    }
+
+    return buildSmokeBadge(probeResult);
+  }, [probeResult]);
 
   async function handleRunProbe() {
     if (!validation.success || isRunning) {
@@ -91,13 +102,18 @@ export default function HomePage() {
     setIsRunning(true);
     setRunError(null);
     setCopyState('idle');
+    setBadgeCopyState('idle');
+
+    const submittedInput = { ...validation.data };
 
     try {
-      const result = await runSmokeProbe(validation.data);
+      const result = await runSmokeProbe(submittedInput);
       setProbeResult(result);
+      setRunInput(submittedInput);
     } catch (error) {
       setRunError(error instanceof Error ? error.message : 'Unexpected error while running probe.');
       setProbeResult(null);
+      setRunInput(null);
     } finally {
       setIsRunning(false);
     }
@@ -113,6 +129,22 @@ export default function HomePage() {
       setCopyState('done');
     } catch {
       setCopyState('error');
+    }
+  }
+
+  async function handleCopyBadge(kind: 'markdown' | 'url' | 'html') {
+    if (!badge) {
+      return;
+    }
+
+    const payload =
+      kind === 'markdown' ? badge.markdownSnippet : kind === 'url' ? badge.badgeUrl : badge.htmlSnippet;
+
+    try {
+      await navigator.clipboard.writeText(payload);
+      setBadgeCopyState('done');
+    } catch {
+      setBadgeCopyState('error');
     }
   }
 
@@ -352,14 +384,25 @@ export default function HomePage() {
                     </p>
                   </section>
 
-                  <section className="rounded-xl border border-mcp-blueSoft bg-blue-50/80 p-3">
+                  {badge && (
+                    <section className="rounded-xl border border-slate-200 bg-white p-3">
+                      <p className="text-xs font-semibold text-slate-700">Badge output</p>
+                      <p className="mt-1 text-[11px] text-slate-600">Share this run as a status badge in README, docs, or dashboards.</p>
+                      <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
+                        <img src={badge.badgeUrl} alt={badge.altText} className="h-5" />
+                        <span className="text-[11px] font-mono text-slate-700">{badge.message}</span>
+                      </div>
+                    </section>
+                  )}
+
+                  <section className="sticky bottom-3 z-10 rounded-xl border border-mcp-blueSoft bg-blue-50/90 p-3 shadow-sm backdrop-blur">
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={handleCopyMarkdown}
                         className="rounded-lg bg-mcp-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"
                       >
-                        Copy markdown
+                        Copy markdown report
                       </button>
                       <button
                         type="button"
@@ -368,10 +411,38 @@ export default function HomePage() {
                       >
                         Download .md
                       </button>
-                      {copyState === 'done' && <span className="text-xs text-emerald-700">Copied to clipboard.</span>}
-                      {copyState === 'error' && <span className="text-xs text-rose-700">Clipboard unavailable. Use download.</span>}
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBadge('markdown')}
+                        disabled={!badge}
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Copy badge markdown
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBadge('url')}
+                        disabled={!badge}
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Copy badge URL
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBadge('html')}
+                        disabled={!badge}
+                        className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Copy badge HTML
+                      </button>
                     </div>
-                    <p className="mt-2 text-[11px] text-blue-900">Gist-ready report with checks, findings, and redacted auth info.</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                      {copyState === 'done' && <span className="text-emerald-700">Report markdown copied.</span>}
+                      {copyState === 'error' && <span className="text-rose-700">Report copy failed. Use download.</span>}
+                      {badgeCopyState === 'done' && <span className="text-emerald-700">Badge snippet copied.</span>}
+                      {badgeCopyState === 'error' && <span className="text-rose-700">Badge copy failed.</span>}
+                    </div>
+                    <p className="mt-2 text-[11px] text-blue-900">Gist-ready report plus shareable Shields-style badge output.</p>
                   </section>
 
                   <details className="rounded-xl border border-slate-200 bg-white p-3">
