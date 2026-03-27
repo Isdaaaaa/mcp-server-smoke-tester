@@ -1,11 +1,47 @@
 [
-  {"id": "slice-000", "name": "Bootstrap", "status": "todo"},
-  {"id": "slice-001", "name": "User input + server setup UI", "status": "todo"},
-  {"id": "slice-002", "name": "Auth flow wiring", "status": "todo"},
-  {"id": "slice-003", "name": "Probe basic MCP capabilities", "status": "todo"},
-  {"id": "slice-004", "name": "Validate tool schemas & contracts", "status": "todo"},
-  {"id": "slice-005", "name": "Run sample invocations/tests", "status": "todo"},
-  {"id": "slice-006", "name": "Markdown/gist-ready report", "status": "todo"},
-  {"id": "slice-007", "name": "Badge output and sharing", "status": "todo"},
-  {"id": "slice-008", "name": "Demo setup for portfolio readers", "status": "todo"}
+  {
+    "id": "slice-000",
+    "name": "Bootstrap",
+    "status": "in_progress"
+  },
+  {
+    "id": "slice-001",
+    "name": "User input + server setup UI",
+    "status": "todo"
+  },
+  {
+    "id": "slice-002",
+    "name": "Auth flow wiring",
+    "status": "todo"
+  },
+  {
+    "id": "slice-003",
+    "name": "Probe basic MCP capabilities",
+    "status": "todo"
+  },
+  {
+    "id": "slice-004",
+    "name": "Validate tool schemas & contracts",
+    "status": "todo"
+  },
+  {
+    "id": "slice-005",
+    "name": "Run sample invocations/tests",
+    "status": "todo"
+  },
+  {
+    "id": "slice-006",
+    "name": "Markdown/gist-ready report",
+    "status": "todo"
+  },
+  {
+    "id": "slice-007",
+    "name": "Badge output and sharing",
+    "status": "todo"
+  },
+  {
+    "id": "slice-008",
+    "name": "Demo setup for portfolio readers",
+    "status": "todo"
+  }
 ]
